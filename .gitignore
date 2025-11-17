@@ -1,0 +1,27 @@
+# Ignore the REAL files with our secret keys
+
+# We will only commit the "_EXAMPLE" files
+
+api.py
+
+index.html
+
+# Ignore our large CSV data file
+
+*.csv
+
+# Ignore Python cache files
+
+__pycache__/
+
+# Ignore Mac system files
+
+.DS_Store
+
+# Ignore Jupyter/Colab notebooks
+
+*.ipynb
+
+# Ignore Team 3 project zip file
+
+Team3_Project code and video.zip

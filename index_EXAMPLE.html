@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEP Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/phosphor-icons"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937;
+        }
+        
+        @keyframes bleep {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            33% {
+                opacity: 0.7;
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+            66% {
+                opacity: 0.7;
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-900">
+    <header class="bg-slate-800 border-b border-emerald-500/20 p-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-white mb-2">NYC Environmental Risk Dashboard</h1>
+                <p class="text-emerald-400">DEP - Proactive Pollution Control</p>
+            </div>
+            <button id="btn-simulate" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition-colors relative overflow-hidden" style="animation: bleep 1s infinite;">
+                <span class="relative z-10">SIMULATE LIVE ALERT (Click for Demo)</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="p-6 grid grid-cols-12 gap-6">
+        <div class="col-span-12 lg:col-span-3 bg-slate-800 rounded-lg p-6 border border-emerald-500/20">
+            <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="ph ph-list-bullets text-emerald-400"></i>
+                Priority Queue
+            </h2>
+            <div id="priority-list" class="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
+            </div>
+        </div>
+
+        <div class="col-span-12 lg:col-span-6 space-y-6">
+            <div class="bg-slate-800 rounded-lg p-6 border border-emerald-500/20">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="ph ph-map-pin text-emerald-400"></i>
+                    Geospatial Hotspots
+                </h2>
+                <div id="map" class="h-[400px] rounded-lg bg-slate-900"></div>
+            </div>
+
+            <div class="bg-slate-800 rounded-lg p-6 border border-emerald-500/20">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="ph ph-chart-bar text-emerald-400"></i>
+                    Traffic Patterns
+                </h2>
+                <canvas id="zipChart"></canvas>
+            </div>
+
+            <div class="bg-slate-800 rounded-lg border border-emerald-500/20">
+                <div class="flex items-center justify-between p-4 border-b border-emerald-500/20 bg-slate-900 rounded-t-lg">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i class="ph ph-brain text-emerald-400"></i>
+                        AI Analyst
+                    </h2>
+                </div>
+
+                <div class="flex border-b border-emerald-500/20 bg-slate-900">
+                    <button id="tab-descriptive" class="flex-1 px-3 py-2 font-medium transition-colors bg-emerald-600 text-white border-b-2 border-emerald-500 text-xs">
+                        Descriptive
+                    </button>
+                    <button id="tab-predictive" class="flex-1 px-3 py-2 font-medium transition-colors text-gray-300 hover:text-white border-b-2 border-transparent text-xs">
+                        Predictive
+                    </button>
+                    <button id="tab-custom" class="flex-1 px-3 py-2 font-medium transition-colors text-gray-300 hover:text-white border-b-2 border-transparent text-xs">
+                        Custom
+                    </button>
+                </div>
+
+                <div class="p-4 space-y-4 max-h-[500px] overflow-y-auto">
+                    <div id="ai-tab-descriptive" class="space-y-3">
+                        <button id="btn-descriptive" class="w-full px-3 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors text-sm">
+                            Run Descriptive Analysis
+                        </button>
+                        <div id="descriptive-results" class="bg-slate-900 rounded-lg p-3 border border-emerald-500/10 min-h-[200px] text-gray-300 font-mono text-xs overflow-auto">
+                        </div>
+                    </div>
+
+                    <div id="ai-tab-predictive" style="display: none;" class="space-y-3">
+                        <button id="btn-predictive" class="w-full px-3 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors text-sm">
+                            Run Predictive Analysis
+                        </button>
+                        <div id="predictive-results" class="bg-slate-900 rounded-lg p-3 border border-emerald-500/10 min-h-[200px] text-gray-300 font-mono text-xs overflow-auto">
+                        </div>
+                    </div>
+
+                    <div id="ai-tab-custom" style="display: none;" class="space-y-3">
+                        <div>
+                            <label class="block text-white text-xs font-medium mb-2">Enter your query:</label>
+                            <textarea 
+                                id="custom-prompt" 
+                                class="w-full bg-slate-700 border-2 border-emerald-500/30 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
+                                rows="4"
+                                placeholder="Example: What are the top 3 areas with highest PM2.5?"></textarea>
+                        </div>
+                        <button id="btn-custom" class="w-full px-3 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors text-sm">
+                            Analyze Query
+                        </button>
+                        <div id="custom-results" class="bg-slate-900 rounded-lg p-3 border border-emerald-500/10 min-h-[200px] text-gray-300 font-mono text-xs overflow-auto">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-span-12 lg:col-span-3 space-y-6">
+            <div class="bg-slate-800 rounded-lg p-6 border border-emerald-500/20">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="ph ph-wind text-emerald-400"></i>
+                    Citywide Air Quality
+                </h2>
+                <div class="flex justify-center">
+                    <div id="aq-meter" class="relative w-48 h-48">
+                        <svg class="transform -rotate-90 w-48 h-48">
+                            <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="8" fill="none" class="text-slate-700"></circle>
+                            <circle id="aq-meter-progress" cx="96" cy="96" r="88" stroke="currentColor" stroke-width="8" fill="none" 
+                                    stroke-dasharray="553" stroke-dashoffset="553" class="text-emerald-500 transition-all duration-1000" 
+                                    stroke-linecap="round"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <div id="aq-meter-value" class="text-3xl font-bold text-white">0</div>
+                                <div class="text-sm text-emerald-400">μg/m³</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 rounded-lg p-6 border border-emerald-500/20">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="ph ph-chart-pie text-emerald-400"></i>
+                    Risk Factor Analysis
+                </h2>
+                <canvas id="factorChart"></canvas>
+            </div>
+
+            <div class="bg-slate-800 rounded-lg p-6 border border-emerald-500/20 space-y-4">
+                <h2 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="ph ph-gauge text-emerald-400"></i>
+                    Key Metrics
+                </h2>
+                <div class="space-y-3">
+                    <div class="bg-slate-900 rounded-lg p-4 border border-emerald-500/10">
+                        <h3 class="text-emerald-400 text-sm font-medium mb-2">Critical Risk Zones</h3>
+                        <p id="kpi-critical-zones" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-lg p-4 border border-emerald-500/10">
+                        <h3 class="text-emerald-400 text-sm font-medium mb-2">Avg. Citywide PM2.5</h3>
+                        <p id="kpi-avg-pm25" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                    <div class="bg-slate-900 rounded-lg p-4 border border-emerald-500/10">
+                        <h3 class="text-emerald-400 text-sm font-medium mb-2">High Congestion Zones</h3>
+                        <p id="kpi-high-congestion" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="loading-spinner" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-slate-800 rounded-lg p-8 flex flex-col items-center border border-emerald-500/20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
+            <p class="text-white font-medium">Loading...</p>
+        </div>
+    </div>
+
+    <div id="alert-message" class="hidden fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-lg shadow-lg z-50">
+        <div class="flex items-center gap-3">
+            <i class="ph ph-warning text-2xl"></i>
+            <span class="font-semibold">ALERT: Pollution detected in Brooklyn!</span>
+        </div>
+    </div>
+
+    
+    <script>
+        let mapInstance = null;
+        let markerLayer = null;
+        let globalRiskData = [];
+
+        const GEO_DATA = {
+            "Brooklyn": [40.6782, -73.9442],
+            "Queens": [40.7282, -73.7949],
+            "Manhattan": [40.7831, -73.9712],
+            "Bronx": [40.8448, -73.8648],
+            "Staten Island": [40.5795, -74.1502],
+            "New York": [40.7128, -74.0060]
+        };
+
+        function runRiskEngine(apiData) {
+            const groupedData = {};
+            
+            apiData.forEach(record => {
+                const geoPlaceName = record['Geo Place Name'] || 'New York';
+                
+                if (!groupedData[geoPlaceName]) {
+                    groupedData[geoPlaceName] = {
+                        pm25Values: [],
+                        trafficValues: []
+                    };
+                }
+                
+                if (record['Name'] === 'Fine particles (PM 2.5)' && record['Data Value'] !== undefined) {
+                    groupedData[geoPlaceName].pm25Values.push(record['Data Value']);
+                }
+                
+                if (record['Vol'] !== undefined) {
+                    groupedData[geoPlaceName].trafficValues.push(record['Vol']);
+                }
+            });
+
+            const riskData = Object.keys(groupedData).map(geoPlaceName => {
+                const group = groupedData[geoPlaceName];
+                
+                const avg_pm25 = group.pm25Values.length > 0
+                    ? group.pm25Values.reduce((sum, val) => sum + val, 0) / group.pm25Values.length
+                    : 0;
+                
+                const avg_traffic = group.trafficValues.length > 0
+                    ? group.trafficValues.reduce((sum, val) => sum + val, 0) / group.trafficValues.length
+                    : 0;
+
+                const coordinates = GEO_DATA[geoPlaceName] || GEO_DATA['New York'];
+                const [lat, lng] = coordinates;
+
+                const normalizedPM25 = Math.min((avg_pm25 / 100) * 100, 100);
+                const normalizedTraffic = Math.min((avg_traffic / 1000) * 100, 100);
+
+                const riskScore = (normalizedPM25 * 0.6) + (normalizedTraffic * 0.4);
+
+                let status, action;
+                if (riskScore >= 70) {
+                    status = 'Critical';
+                    action = 'Dispatch Air Quality Mobile Unit';
+                } else if (riskScore >= 50) {
+                    status = 'High';
+                    action = 'Schedule Inspection';
+                } else if (riskScore >= 30) {
+                    status = 'Moderate';
+                    action = 'Monitor Closely';
+                } else {
+                    status = 'Low';
+                    action = 'Routine Check';
+                }
+
+                return {
+                    name: geoPlaceName,
+                    lat: lat,
+                    lng: lng,
+                    pm25: Math.round(avg_pm25 * 10) / 10,
+                    congestion_level: Math.round(avg_traffic * 10) / 10,
+                    riskScore: Math.round(riskScore * 10) / 10,
+                    status: status,
+                    action: action
+                };
+            });
+
+            return riskData.sort((a, b) => b.riskScore - a.riskScore);
+        }
+
+        function renderPriorityList(data) {
+            const priorityList = document.getElementById('priority-list');
+            priorityList.innerHTML = '';
+
+            const topPriorities = data.slice(0, 10);
+            
+            topPriorities.forEach((item, index) => {
+                const priorityItem = document.createElement('div');
+                priorityItem.className = 'bg-gray-700 rounded-lg p-4 border border-gray-600';
+                
+                const statusColor = item.status === 'Critical' ? 'text-red-400' : 
+                                   item.status === 'High' ? 'text-orange-400' : 
+                                   item.status === 'Moderate' ? 'text-yellow-400' : 'text-green-400';
+                
+                priorityItem.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-gray-400 text-sm">#${index + 1}</span>
+                            <h3 class="text-white font-semibold">${item.name}</h3>
+                        </div>
+                        <span class="${statusColor} font-bold text-sm">${item.status}</span>
+                    </div>
+                    <p class="text-gray-300 text-sm mb-1">Risk Score: <span class="font-semibold">${item.riskScore}</span></p>
+                    <p class="text-blue-400 text-xs">${item.action}</p>
+                `;
+                
+                priorityList.appendChild(priorityItem);
+            });
+        }
+
+        let zipChartInstance = null;
+        let factorChartInstance = null;
+
+        function renderCharts(data) {
+            const zipCtx = document.getElementById('zipChart').getContext('2d');
+            
+            if (zipChartInstance) {
+                zipChartInstance.destroy();
+            }
+
+            const sortedByName = [...data].sort((a, b) => a.name.localeCompare(b.name));
+            
+            zipChartInstance = new Chart(zipCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedByName.map(d => d.name),
+                    datasets: [{
+                        label: 'Risk Score',
+                        data: sortedByName.map(d => d.riskScore),
+                        backgroundColor: sortedByName.map(d => 
+                            d.riskScore >= 70 ? 'rgba(239, 68, 68, 0.8)' :
+                            d.riskScore >= 50 ? 'rgba(251, 146, 60, 0.8)' :
+                            d.riskScore >= 30 ? 'rgba(234, 179, 8, 0.8)' : 'rgba(34, 197, 94, 0.8)'
+                        ),
+                        borderColor: sortedByName.map(d => 
+                            d.riskScore >= 70 ? 'rgb(239, 68, 68)' :
+                            d.riskScore >= 50 ? 'rgb(251, 146, 60)' :
+                            d.riskScore >= 30 ? 'rgb(234, 179, 8)' : 'rgb(34, 197, 94)'
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: '#374151'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const topRiskLocation = data[0];
+            const factorCtx = document.getElementById('factorChart').getContext('2d');
+            
+            if (factorChartInstance) {
+                factorChartInstance.destroy();
+            }
+
+            factorChartInstance = new Chart(factorCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['PM2.5 (60%)', 'Traffic (40%)'],
+                    datasets: [{
+                        data: [
+                            (topRiskLocation.pm25 / 100) * 60,
+                            (topRiskLocation.congestion_level / 1000) * 40
+                        ],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(251, 146, 60, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgb(239, 68, 68)',
+                            'rgb(251, 146, 60)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9ca3af',
+                                padding: 15
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `${topRiskLocation.name}`,
+                            color: '#ffffff',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initMap(data) {
+            if (mapInstance) {
+                mapInstance.remove();
+            }
+
+            mapInstance = L.map('map').setView([40.7128, -74.0060], 11);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(mapInstance);
+
+            markerLayer = L.layerGroup().addTo(mapInstance);
+        }
+
+        function updateMap(data) {
+            if (!mapInstance || !markerLayer) return;
+
+            markerLayer.clearLayers();
+
+            data.forEach(item => {
+                const color = item.status === 'Critical' ? 'red' :
+                             item.status === 'High' ? 'orange' :
+                             item.status === 'Moderate' ? 'yellow' : 'green';
+
+                const marker = L.circleMarker([item.lat, item.lng], {
+                    radius: 8,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(markerLayer);
+
+                marker.bindPopup(`
+                    <div style="color: #1f2937;">
+                        <strong>${item.name}</strong><br>
+                        Risk Score: ${item.riskScore}<br>
+                        Status: ${item.status}<br>
+                        PM2.5: ${item.pm25} μg/m³<br>
+                        Traffic: ${item.congestion_level}<br>
+                        <em>${item.action}</em>
+                    </div>
+                `);
+            });
+        }
+
+        window.onload = async function() {
+            const loadingSpinner = document.getElementById('loading-spinner');
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/data');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const apiData = await response.json();
+                
+                globalRiskData = runRiskEngine(apiData);
+
+                renderPriorityList(globalRiskData);
+                initMap(globalRiskData);
+                updateMap(globalRiskData);
+                renderCharts(globalRiskData);
+
+                const criticalZones = globalRiskData.filter(d => d.status === 'Critical').length;
+                const avgPM25 = globalRiskData.reduce((sum, d) => sum + d.pm25, 0) / globalRiskData.length;
+                const highCongestionZones = globalRiskData.filter(d => d.congestion_level >= 500).length;
+
+                document.getElementById('kpi-critical-zones').textContent = criticalZones;
+                document.getElementById('kpi-avg-pm25').textContent = avgPM25.toFixed(1) + ' μg/m³';
+                document.getElementById('kpi-high-congestion').textContent = highCongestionZones;
+
+                updateAQMeter(avgPM25);
+
+                if (typeof ph !== 'undefined' && ph.refresh) {
+                    ph.refresh();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('kpi-critical-zones').textContent = 'Error';
+                document.getElementById('kpi-avg-pm25').textContent = 'Error';
+                document.getElementById('kpi-high-congestion').textContent = 'Error';
+                alert('Failed to load data from API. Please ensure the Flask server is running on port 5001.');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        };
+
+        function updateAQMeter(value) {
+            const meterProgress = document.getElementById('aq-meter-progress');
+            const meterValue = document.getElementById('aq-meter-value');
+            
+            const percentage = Math.min(value / 100, 1);
+            const circumference = 2 * Math.PI * 88;
+            const offset = circumference - (percentage * circumference);
+            
+            meterProgress.style.strokeDashoffset = offset;
+            meterValue.textContent = value.toFixed(1);
+        }
+
+        document.getElementById('btn-simulate').addEventListener('click', function() {
+            function playBeep(delay) {
+                setTimeout(() => {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                }, delay);
+            }
+            
+            playBeep(0);
+            playBeep(200);
+            playBeep(400);
+
+            const spikedData = globalRiskData.map(item => {
+                if (item.name === 'Brooklyn') {
+                    return {
+                        ...item,
+                        pm25: item.pm25 * 3
+                    };
+                }
+                return item;
+            });
+
+            const spikedApiData = JSON.parse(JSON.stringify(globalRiskData));
+            
+            spikedData.forEach(item => {
+                const normalizedPM25 = Math.min((item.pm25 / 100) * 100, 100);
+                const normalizedTraffic = Math.min((item.congestion_level / 1000) * 100, 100);
+                item.riskScore = Math.round(((normalizedPM25 * 0.6) + (normalizedTraffic * 0.4)) * 10) / 10;
+                
+                if (item.riskScore >= 70) {
+                    item.status = 'Critical';
+                    item.action = 'Dispatch Air Quality Mobile Unit';
+                } else if (item.riskScore >= 50) {
+                    item.status = 'High';
+                    item.action = 'Schedule Inspection';
+                } else if (item.riskScore >= 30) {
+                    item.status = 'Moderate';
+                    item.action = 'Monitor Closely';
+                } else {
+                    item.status = 'Low';
+                    item.action = 'Routine Check';
+                }
+            });
+
+            spikedData.sort((a, b) => b.riskScore - a.riskScore);
+
+            globalRiskData = spikedData;
+
+            updateMap(globalRiskData);
+            renderCharts(globalRiskData);
+            renderPriorityList(globalRiskData);
+
+            const criticalZones = globalRiskData.filter(d => d.status === 'Critical').length;
+            const avgPM25 = globalRiskData.reduce((sum, d) => sum + d.pm25, 0) / globalRiskData.length;
+            const highCongestionZones = globalRiskData.filter(d => d.congestion_level >= 500).length;
+
+            document.getElementById('kpi-critical-zones').textContent = criticalZones;
+            document.getElementById('kpi-avg-pm25').textContent = avgPM25.toFixed(1) + ' μg/m³';
+            document.getElementById('kpi-high-congestion').textContent = highCongestionZones;
+
+            updateAQMeter(avgPM25);
+
+            const alertMessage = document.getElementById('alert-message');
+            alertMessage.classList.remove('hidden');
+            setTimeout(() => {
+                alertMessage.classList.add('hidden');
+            }, 5000);
+        });
+
+        async function fetchGeminiResponse(systemPrompt, userPrompt) {
+            const API_KEY = ""; // YOUR_GEMINI_API_KEY_GOES_HERE
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [{
+                        text: userPrompt
+                    }]
+                }],
+                systemInstruction: {
+                    parts: [{
+                        text: systemPrompt
+                    }]
+                }
+            };
+
+            const maxRetries = 3;
+            let retryCount = 0;
+            let baseDelay = 1000;
+
+            while (retryCount < maxRetries) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                        return data.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error('Invalid response format from API');
+                    }
+                } catch (error) {
+                    retryCount++;
+                    
+                    if (retryCount >= maxRetries) {
+                        throw error;
+                    }
+                    
+                    const delay = baseDelay * Math.pow(2, retryCount - 1);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        async function runAnalysis(buttonId, resultBoxId, systemPrompt, userPrompt) {
+            const button = document.getElementById(buttonId);
+            const resultBox = document.getElementById(resultBoxId);
+            
+            button.disabled = true;
+            button.textContent = 'Analyzing...';
+            resultBox.innerHTML = `
+                <div class="flex items-center justify-center h-full">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span class="ml-3 text-gray-400">Processing your request...</span>
+                </div>
+            `;
+
+            try {
+                const response = await fetchGeminiResponse(systemPrompt, userPrompt);
+                resultBox.innerHTML = `<div class="whitespace-pre-wrap">${response}</div>`;
+            } catch (error) {
+                resultBox.innerHTML = `
+                    <div class="text-red-400">
+                        <strong>Error:</strong> ${error.message}<br>
+                        <span class="text-gray-400 text-xs mt-2 block">Please check your API key and try again.</span>
+                    </div>
+                `;
+            } finally {
+                button.disabled = false;
+                if (buttonId === 'btn-descriptive') {
+                    button.textContent = 'Run Descriptive Analysis';
+                } else if (buttonId === 'btn-predictive') {
+                    button.textContent = 'Run Predictive Analysis';
+                } else if (buttonId === 'btn-custom') {
+                    button.textContent = 'Analyze Query';
+                }
+            }
+        }
+
+    </script>
+
+    <script>
+        const tabDescriptive = document.getElementById('tab-descriptive');
+        const tabPredictive = document.getElementById('tab-predictive');
+        const tabCustom = document.getElementById('tab-custom');
+        const aiTabDescriptive = document.getElementById('ai-tab-descriptive');
+        const aiTabPredictive = document.getElementById('ai-tab-predictive');
+        const aiTabCustom = document.getElementById('ai-tab-custom');
+
+        function setActiveTab(activeTab, inactiveTab1, inactiveTab2) {
+            activeTab.classList.remove('text-gray-300', 'hover:text-white', 'border-transparent');
+            activeTab.classList.add('bg-emerald-600', 'text-white', 'border-emerald-500');
+            
+            inactiveTab1.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-500');
+            inactiveTab1.classList.add('text-gray-300', 'hover:text-white', 'border-transparent');
+            
+            inactiveTab2.classList.remove('bg-emerald-600', 'text-white', 'border-emerald-500');
+            inactiveTab2.classList.add('text-gray-300', 'hover:text-white', 'border-transparent');
+        }
+
+        tabDescriptive.addEventListener('click', function() {
+            aiTabDescriptive.style.display = 'block';
+            aiTabPredictive.style.display = 'none';
+            aiTabCustom.style.display = 'none';
+            setActiveTab(tabDescriptive, tabPredictive, tabCustom);
+        });
+
+        tabPredictive.addEventListener('click', function() {
+            aiTabPredictive.style.display = 'block';
+            aiTabDescriptive.style.display = 'none';
+            aiTabCustom.style.display = 'none';
+            setActiveTab(tabPredictive, tabDescriptive, tabCustom);
+        });
+
+        tabCustom.addEventListener('click', function() {
+            aiTabCustom.style.display = 'block';
+            aiTabDescriptive.style.display = 'none';
+            aiTabPredictive.style.display = 'none';
+            setActiveTab(tabCustom, tabDescriptive, tabPredictive);
+        });
+
+        document.getElementById('btn-descriptive').addEventListener('click', function() {
+            const systemPrompt = 'You are an environmental data analyst for the NYC Department of Environmental Protection. Provide clear, concise, and actionable insights based on the data provided.';
+            const userPrompt = `Summarize the key trends in this environmental risk data for NYC ZIP codes:
+
+${JSON.stringify(globalRiskData, null, 2)}
+
+Please provide:
+1. Overall risk assessment
+2. Top 3 highest risk zones and why
+3. Key patterns in PM2.5, traffic congestion, and waste data
+4. Recommendations for immediate action`;
+
+            runAnalysis('btn-descriptive', 'descriptive-results', systemPrompt, userPrompt);
+        });
+
+        document.getElementById('btn-predictive').addEventListener('click', function() {
+            const systemPrompt = 'You are a predictive analytics expert for environmental risk management. Analyze data patterns and provide forecasts with confidence levels.';
+            const userPrompt = `Based on this environmental risk data for NYC ZIP codes:
+
+${JSON.stringify(globalRiskData, null, 2)}
+
+Please predict:
+1. Which 3 ZIP codes are at highest risk for a pollution spike next week?
+2. What factors contribute most to this risk?
+3. What preventive measures should be taken?
+4. What is your confidence level in these predictions?`;
+
+            runAnalysis('btn-predictive', 'predictive-results', systemPrompt, userPrompt);
+        });
+
+        document.getElementById('btn-custom').addEventListener('click', function() {
+            const customPrompt = document.getElementById('custom-prompt').value.trim();
+            
+            if (!customPrompt) {
+                document.getElementById('custom-results').innerHTML = `
+                    <div class="text-yellow-400">Please enter a query in the text area above.</div>
+                `;
+                return;
+            }
+
+            const systemPrompt = 'You are an AI analyst for the NYC Department of Environmental Protection. Answer questions about environmental risk data accurately and helpfully.';
+            const userPrompt = `Environmental Risk Data:
+${JSON.stringify(globalRiskData, null, 2)}
+
+User Query: ${customPrompt}`;
+
+            runAnalysis('btn-custom', 'custom-results', systemPrompt, userPrompt);
+        });
+    </script>
+</body>
+</html>
+
