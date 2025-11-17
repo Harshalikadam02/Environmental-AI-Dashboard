@@ -25,3 +25,8 @@ __pycache__/
 # Ignore Team 3 project zip file
 
 Team3_Project code and video.zip
+
+# Ignore large video files
+
+final project demo .mov
+*.mov
